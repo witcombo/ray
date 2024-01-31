@@ -1,15 +1,15 @@
 # __example_code_start__
 
 from io import BytesIO
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import Response
 from ray import serve
 from ray.serve.handle import DeploymentHandle
 from pydantic import BaseModel
 import torch
 import json
-import requests
 import os
+import requests
 import random
 import string
 
@@ -38,7 +38,9 @@ class APIIngress:
         # Move the Ray Serve related logic inside the generate method
         image = await self.handle.generate.remote(prompt, img_size=img_size)
 
-        # Rest of the code remains the same
+        # Convert the image to PNG format and create a response
+        file_stream = BytesIO()
+        image.save(file_stream, "PNG")
 
         return Response(content=file_stream.getvalue(), media_type="image/png")
 
