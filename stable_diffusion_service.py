@@ -1,17 +1,13 @@
-# __example_code_start__
+# Updated code to integrate Ray Serve with FastAPI
 
 from io import BytesIO
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import Response
 from ray import serve
 from ray.serve.handle import DeploymentHandle
 from pydantic import BaseModel
 import torch
-import json
-import os
-import requests
-import random
-import string
+from typing import Optional
 
 app = FastAPI()
 
@@ -19,8 +15,6 @@ app = FastAPI()
 class PromptRequest(BaseModel):
     prompt: str
 
-
-# Update the APIIngress class as follows:
 
 @serve.deployment(num_replicas=1)
 @serve.ingress(app)
@@ -37,25 +31,8 @@ class APIIngress:
         prompt = prompt_request.prompt
         assert len(prompt), "prompt parameter cannot be empty"
 
-        # Create a replica context for Ray Serve
-        ctx = serve.get_replica_context()
-
-        # Ensure we are inside a Ray Serve deployment context
-        if ctx is not None:
-            # Move the Ray Serve related logic inside the generate method
-            image = await self.handle.generate.remote(prompt, img_size=img_size)
-
-            # Convert the image to PNG format and create a response
-            file_stream = BytesIO()
-            image.save(file_stream, "PNG")
-
-            return Response(content=file_stream.getvalue(), media_type="image/png")
-        else:
-            # If not inside a Ray Serve deployment context, raise an error
-            raise HTTPException(
-                status_code=500,
-                detail="This endpoint must be called within a Ray Serve deployment.",
-            )
+        image = await self.handle.generate.remote(prompt, img_size=img_size)
+        return Response(content=image, media_type="image/png")
 
 
 @serve.deployment(
@@ -76,17 +53,17 @@ class StableDiffusionV2:
         )
         self.pipe = self.pipe.to("cuda")
 
-    def generate(self, prompt: str, img_size: int = 512):
+    async def generate(self, prompt: str, img_size: int = 512):
         assert len(prompt), "prompt parameter cannot be empty"
 
         with torch.autocast("cuda"):
             image = self.pipe(prompt, height=img_size, width=img_size).images[0]
-            return image
+            file_stream = BytesIO()
+            image.save(file_stream, "PNG")
+            return file_stream.getvalue()
 
 
 entrypoint = APIIngress.bind(StableDiffusionV2.bind())
-
-# __example_code_end__
 
 if __name__ == "__main__":
     import ray
