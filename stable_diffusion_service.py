@@ -7,7 +7,7 @@ from ray import serve
 
 app = FastAPI()
 
-@serve.deployment(name="diffusion_model", version=1)
+@serve.deployment(name="diffusion_model", version="1")
 class StableDiffusionV2:
     def __init__(self):
         from diffusers import EulerDiscreteScheduler, StableDiffusionPipeline
