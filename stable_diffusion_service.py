@@ -2,12 +2,10 @@ from io import BytesIO
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import Response
 import torch
-
 from ray import serve
 
 app = FastAPI()
 
-@serve.deployment
 class StableDiffusionV2:
     def __init__(self):
         from diffusers import EulerDiscreteScheduler, StableDiffusionPipeline
@@ -31,10 +29,8 @@ class StableDiffusionV2:
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-# Start Ray Serve in the script.
-serve.start()
 
+deployed_app = StableDiffusionV2.deploy()
+app = deployed_app.app
 
-# Use `block=False` to allow the script to run continuously.
-serve.run(StableDiffusionV2, host="0.0.0.0", port=8888)
-serve.create_endpoint("diffusion_model", backend="StableDiffusionV2", route="/diffusion_model", methods=["GET", "POST"])
+serve.run(app, host="0.0.0.0", port=8888)
