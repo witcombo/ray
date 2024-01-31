@@ -33,8 +33,8 @@ class StableDiffusionV2:
 serve.start()
 
 # 创建后端和端点
-serve.backend("diffusion_model", StableDiffusionV2)
-serve.create_endpoint("diffusion_model", backend="diffusion_model", route="/diffusion_model", methods=["GET", "POST"])
+backend = serve.Backend(StableDiffusionV2)
+serve.create_endpoint("diffusion_model", backend=backend, route="/diffusion_model", methods=["GET", "POST"])
 
 # 运行服务
 serve.run(host="0.0.0.0", port=8888)
