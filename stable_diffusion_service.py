@@ -29,8 +29,12 @@ class StableDiffusionV2:
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
+# 启动 Ray Serve
+serve.start()
 
-deployed_app = StableDiffusionV2.deploy()
-app = deployed_app.app
+# 创建后端和端点
+serve.create_backend("diffusion_model", StableDiffusionV2)
+serve.create_endpoint("diffusion_model", backend="diffusion_model", route="/diffusion_model", methods=["GET", "POST"])
 
-serve.run(app, host="0.0.0.0", port=8888)
+# 运行服务
+serve.run(host="0.0.0.0", port=8888)
