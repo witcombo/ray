@@ -1,19 +1,11 @@
-# Updated code with @serve.ingress for FastAPI
+# Complete modified code
 
 from io import BytesIO
-from fastapi import FastAPI, HTTPException, Depends
-from fastapi.responses import Response
+from fastapi import FastAPI
 from ray import serve
-from ray.serve.handle import DeploymentHandle
-from pydantic import BaseModel
 import torch
-from typing import Optional
 
 app = FastAPI()
-
-
-class PromptRequest(BaseModel):
-    prompt: str
 
 
 @serve.deployment(num_replicas=1)
@@ -41,8 +33,14 @@ class StableDiffusionV2:
             return file_stream.getvalue()
 
 
-APIIngress = serve.ingress(app)
-entrypoint = APIIngress.bind(StableDiffusionV2)
+# Use @serve.ingress for FastAPI app
+@serve.ingress(app)
+class APIIngress:
+    async def generate(self, prompt: str, img_size: int = 512):
+        return await StableDiffusionV2.generate.remote(prompt, img_size=img_size)
+
+
+entrypoint = APIIngress.deploy()
 
 if __name__ == "__main__":
     import ray
@@ -60,7 +58,8 @@ if __name__ == "__main__":
         }
     )
 
-    handle = serve.run(entrypoint)
+    # Deploy entrypoint
+    handle = serve.start(entrypoint)
 
     # Run FastAPI application using uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8888)
