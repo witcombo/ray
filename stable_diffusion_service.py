@@ -30,6 +30,7 @@ class StableDiffusionV2:
             return image
 
 @serve.deployment(name="api_ingress")
+@serve.ingress(app)
 class APIIngress:
     async def __call__(self, prompt: str, img_size: int = 512):
         try:
@@ -41,4 +42,4 @@ class APIIngress:
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-serve.run(entrypoint=APIIngress, host="0.0.0.0", port=8888)
+serve.run(host="0.0.0.0", port=8888)
