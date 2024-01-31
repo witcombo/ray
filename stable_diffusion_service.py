@@ -1,5 +1,5 @@
 from io import BytesIO
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import Response
 import torch
 
@@ -29,17 +29,15 @@ class StableDiffusionV2:
             image = self.pipe(prompt, height=img_size, width=img_size).images[0]
             return image
 
-@serve.deployment(name="api_ingress")
 @serve.ingress(app)
-class APIIngress:
-    async def __call__(self, prompt: str, img_size: int = 512):
-        try:
-            handle = serve.get_handle("diffusion_model")
-            image = await handle.remote(prompt, img_size=img_size)
-            file_stream = BytesIO()
-            image.save(file_stream, "PNG")
-            return Response(content=file_stream.getvalue(), media_type="image/png")
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+async def api_ingress(prompt: str, img_size: int = 512):
+    try:
+        handle = serve.get_handle("diffusion_model")
+        image = await handle.remote(prompt, img_size=img_size)
+        file_stream = BytesIO()
+        image.save(file_stream, "PNG")
+        return Response(content=file_stream.getvalue(), media_type="image/png")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 serve.run(host="0.0.0.0", port=8888)
