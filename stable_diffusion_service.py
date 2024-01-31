@@ -18,7 +18,7 @@ class APIIngress:
     def __init__(self, diffusion_model_handle: DeploymentHandle) -> None:
         self.handle = diffusion_model_handle
 
-    @app.get(
+    @app.post(
         "/imagine",
         responses={200: {"content": {"image/png": {}}}},
         response_class=Response,
