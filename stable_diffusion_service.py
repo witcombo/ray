@@ -1,4 +1,4 @@
-# Updated code to integrate Ray Serve with FastAPI
+# Updated code with @serve.ingress for FastAPI
 
 from io import BytesIO
 from fastapi import FastAPI, HTTPException, Depends
@@ -17,28 +17,6 @@ class PromptRequest(BaseModel):
 
 
 @serve.deployment(num_replicas=1)
-@serve.ingress(app)
-class APIIngress:
-    def __init__(self, diffusion_model_handle: DeploymentHandle) -> None:
-        self.handle = diffusion_model_handle
-
-    @app.post(
-        "/imagine",
-        responses={200: {"content": {"image/png": {}}}},
-        response_class=Response,
-    )
-    async def generate(self, prompt_request: PromptRequest, img_size: int = 512):
-        prompt = prompt_request.prompt
-        assert len(prompt), "prompt parameter cannot be empty"
-
-        image = await self.handle.generate.remote(prompt, img_size=img_size)
-        return Response(content=image, media_type="image/png")
-
-
-@serve.deployment(
-    ray_actor_options={"num_gpus": 1},
-    autoscaling_config={"min_replicas": 0, "max_replicas": 2},
-)
 class StableDiffusionV2:
     def __init__(self):
         from diffusers import EulerDiscreteScheduler, StableDiffusionPipeline
@@ -63,7 +41,8 @@ class StableDiffusionV2:
             return file_stream.getvalue()
 
 
-entrypoint = APIIngress.bind(StableDiffusionV2.bind())
+APIIngress = serve.ingress(app)
+entrypoint = APIIngress.bind(StableDiffusionV2)
 
 if __name__ == "__main__":
     import ray
