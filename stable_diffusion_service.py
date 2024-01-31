@@ -1,19 +1,16 @@
 # __example_code_start__
 
 from io import BytesIO
-from fastapi import FastAPI, HTTPException, UploadFile, File, Depends
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import Response
-from pydantic import BaseModel
+from ray import serve
+from ray.serve.handle import DeploymentHandle
 import torch
 import json
 import requests
 import os
 import random
 import string
-
-from ray import serve
-from ray.serve.handle import DeploymentHandle
-
 
 app = FastAPI()
 
@@ -37,6 +34,7 @@ class APIIngress:
         prompt = prompt_request.prompt
         assert len(prompt), "prompt parameter cannot be empty"
 
+        # Move the Ray Serve related logic inside the generate method
         image = await self.handle.generate.remote(prompt, img_size=img_size)
 
         # Generate a random filename for the image
@@ -123,4 +121,4 @@ if __name__ == "__main__":
     handle = serve.run(entrypoint)
 
     # Run FastAPI application using uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8888)
+    uvicorn.run(app, host="127.0.0.1", port=8888)
