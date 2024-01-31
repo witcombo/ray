@@ -36,5 +36,5 @@ serve.start()
 
 
 # Use `block=False` to allow the script to run continuously.
-serve.run(StableDiffusionV2, host="0.0.0.0", port=8888, block=False)
+serve.run(StableDiffusionV2, host="0.0.0.0", port=8888)
 serve.create_endpoint("diffusion_model", backend="StableDiffusionV2", route="/diffusion_model", methods=["GET", "POST"])
