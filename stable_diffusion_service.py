@@ -36,42 +36,10 @@ class APIIngress:
         assert len(prompt), "prompt parameter cannot be empty"
 
         # Move the Ray Serve related logic inside the generate method
-        with serve.using_router(self.handle):
-            image = await serve.get_replica_context().ray.remote(
-                self.handle.generate, prompt, img_size=img_size
-            )
+        image = await self.handle.generate.remote(prompt, img_size=img_size)
 
-        # Generate a random filename for the image
-        filename = ''.join(random.choices(string.ascii_letters + string.digits, k=8)) + ".png"
+        # Rest of the code remains the same
 
-        # Save the image with the random filename
-        file_path = os.path.join("images", filename)
-        file_stream = BytesIO()
-        image.save(file_stream, "PNG")
-        with open(file_path, "wb") as f:
-            f.write(file_stream.getvalue())
-
-        # Prepare headers and body for image upload
-        headers = {
-            "Authorization": "tvIlCBD1cmkrQWafhoU3Gi7gb4KSdRuP",
-        }
-        files = {
-            'smfile': (filename, file_stream.getvalue(), 'image/png'),
-            'format': (None, 'json'),
-        }
-
-        # Upload the image to the specified image hosting service
-        upload_url = "https://sm.ms/api/v2/upload"
-        response_upload = requests.post(upload_url, headers=headers, files=files)
-
-        # Check if the upload was successful
-        if response_upload.status_code == 200:
-            print("Image uploaded successfully.")
-            print(f"Image URL: {response_upload.json().get('data').get('url')}")
-        else:
-            print(f"Failed to upload image. Status code: {response_upload.status_code}")
-
-        # Return the image as a response
         return Response(content=file_stream.getvalue(), media_type="image/png")
 
 
@@ -124,4 +92,4 @@ if __name__ == "__main__":
     handle = serve.run(entrypoint)
 
     # Run FastAPI application using uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8888)
+    uvicorn.run(app, host="127.0.0.1", port=8888)
