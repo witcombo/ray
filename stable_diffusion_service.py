@@ -34,10 +34,8 @@ class StableDiffusionV2:
 # Start Ray Serve in the script.
 serve.start()
 
-# Deploy the backend.
-StableDiffusionV2.deploy()
-
-# Define the endpoint.
+# Deploy the backend and define the endpoint.
+serve.create_backend("diffusion_model", StableDiffusionV2)
 serve.create_endpoint("diffusion_model", backend="diffusion_model", route="/diffusion_model", methods=["GET", "POST"])
 
 # Use `block=False` to allow the script to run continuously.
