@@ -33,7 +33,10 @@ class StableDiffusionV2:
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
+# Start Ray Serve in the script.
 serve.start()
+
+# Define the backend and endpoint.
 serve.create_backend("diffusion_model", StableDiffusionV2)
 serve.create_endpoint("diffusion_model", backend="diffusion_model", route="/diffusion_model")
 
