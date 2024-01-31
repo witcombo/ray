@@ -1,12 +1,15 @@
 # __example_code_start__
 
 from io import BytesIO
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File, Depends
 from fastapi.responses import Response
-from fastapi import Depends
 from pydantic import BaseModel
 import torch
 import json
+import requests
+import os
+import random
+import string
 
 from ray import serve
 from ray.serve.handle import DeploymentHandle
@@ -35,8 +38,38 @@ class APIIngress:
         assert len(prompt), "prompt parameter cannot be empty"
 
         image = await self.handle.generate.remote(prompt, img_size=img_size)
+
+        # Generate a random filename for the image
+        filename = ''.join(random.choices(string.ascii_letters + string.digits, k=8)) + ".png"
+
+        # Save the image with the random filename
+        file_path = os.path.join("images", filename)
         file_stream = BytesIO()
         image.save(file_stream, "PNG")
+        with open(file_path, "wb") as f:
+            f.write(file_stream.getvalue())
+
+        # Prepare headers and body for image upload
+        headers = {
+            "Authorization": "tvIlCBD1cmkrQWafhoU3Gi7gb4KSdRuP",
+        }
+        files = {
+            'smfile': (filename, file_stream.getvalue(), 'image/png'),
+            'format': (None, 'json'),
+        }
+
+        # Upload the image to the specified image hosting service
+        upload_url = "https://sm.ms/api/v2/upload"
+        response_upload = requests.post(upload_url, headers=headers, files=files)
+
+        # Check if the upload was successful
+        if response_upload.status_code == 200:
+            print("Image uploaded successfully.")
+            print(f"Image URL: {response_upload.json().get('data').get('url')}")
+        else:
+            print(f"Failed to upload image. Status code: {response_upload.status_code}")
+
+        # Return the image as a response
         return Response(content=file_stream.getvalue(), media_type="image/png")
 
 
@@ -74,8 +107,6 @@ entrypoint = APIIngress.bind(StableDiffusionV2.bind())
 if __name__ == "__main__":
     import ray
     import uvicorn
-    import os
-    import requests
 
     ray.init(
         runtime_env={
@@ -83,6 +114,8 @@ if __name__ == "__main__":
                 "diffusers==0.14.0",
                 "transformers==4.25.1",
                 "accelerate==0.17.1",
+                "fastapi",
+                "httpx",
             ]
         }
     )
