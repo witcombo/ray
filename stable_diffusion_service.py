@@ -40,7 +40,7 @@ class APIIngress:
         return await StableDiffusionV2.generate.remote(prompt, img_size=img_size)
 
 
-entrypoint = APIIngress.deploy()
+entrypoint = APIIngress.deploy(StableDiffusionV2)
 
 if __name__ == "__main__":
     import ray
