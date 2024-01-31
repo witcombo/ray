@@ -1,11 +1,11 @@
 # __example_code_start__
 
 from io import BytesIO
-from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import Response
 from ray import serve
 from ray.serve.handle import DeploymentHandle
+from pydantic import BaseModel
 import torch
 import json
 import requests
@@ -36,7 +36,10 @@ class APIIngress:
         assert len(prompt), "prompt parameter cannot be empty"
 
         # Move the Ray Serve related logic inside the generate method
-        image = await self.handle.generate.remote(prompt, img_size=img_size)
+        with serve.using_router(self.handle):
+            image = await serve.get_replica_context().ray.remote(
+                self.handle.generate, prompt, img_size=img_size
+            )
 
         # Generate a random filename for the image
         filename = ''.join(random.choices(string.ascii_letters + string.digits, k=8)) + ".png"
@@ -101,7 +104,6 @@ class StableDiffusionV2:
 entrypoint = APIIngress.bind(StableDiffusionV2.bind())
 
 # __example_code_end__
-
 
 if __name__ == "__main__":
     import ray
