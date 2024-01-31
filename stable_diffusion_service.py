@@ -35,7 +35,7 @@ class StableDiffusionV2:
 serve.start()
 
 # Deploy the backend and define the endpoint.
-backend = serve.Backend(StableDiffusionV2)
+backend = serve.api.Backend(StableDiffusionV2)
 serve.create_endpoint("diffusion_model", backend=backend, route="/diffusion_model", methods=["GET", "POST"])
 
 # Use `block=False` to allow the script to run continuously.
