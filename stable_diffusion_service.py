@@ -41,5 +41,4 @@ class APIIngress:
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-entrypoint = APIIngress.deploy()
-serve.start(http_options={"host": "0.0.0.0", "port": 8888})
+serve.run(entrypoint=APIIngress, host="0.0.0.0", port=8888)
