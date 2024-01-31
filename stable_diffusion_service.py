@@ -21,10 +21,9 @@ class StableDiffusionV2:
         )
         self.pipe = self.pipe.to("cuda")
 
-    @serve.ingress(app)
-    async def api_ingress(self, prompt: str, img_size: int = 512):
+    def __call__(self, prompt: str, img_size: int = 512):
         try:
-            image = await self.pipe.remote(prompt, img_size=img_size)
+            image = self.pipe.remote(prompt, img_size=img_size)
             file_stream = BytesIO()
             image.save(file_stream, "PNG")
             return Response(content=file_stream.getvalue(), media_type="image/png")
