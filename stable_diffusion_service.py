@@ -21,16 +21,21 @@ class StableDiffusionV2:
         )
         self.pipe = self.pipe.to("cuda")
 
-    def __call__(self, prompt: str, img_size: int = 512):
+    async def __call__(self, request):
+        prompt = request.query_params.get("prompt", "")
+        img_size = int(request.query_params.get("img_size", 512))
+
         try:
-            image = self.pipe.remote(prompt, img_size=img_size)
+            image = await self.pipe.remote(prompt, img_size=img_size)
             file_stream = BytesIO()
             image.save(file_stream, "PNG")
             return Response(content=file_stream.getvalue(), media_type="image/png")
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
+serve.start()
 serve.create_backend("diffusion_model", StableDiffusionV2)
 serve.create_endpoint("diffusion_model", backend="diffusion_model", route="/diffusion_model")
 
-serve.run(host="0.0.0.0", port=8888)
+# Use `block=False` to allow the script to run continuously.
+serve.run(host="0.0.0.0", port=8888, block=False)
