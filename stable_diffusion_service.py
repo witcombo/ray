@@ -7,7 +7,6 @@ from ray import serve
 
 app = FastAPI()
 
-@serve.deployment(name="diffusion_model", num_replicas=1)
 class StableDiffusionV2:
     def __init__(self):
         from diffusers import EulerDiscreteScheduler, StableDiffusionPipeline
@@ -32,5 +31,7 @@ class StableDiffusionV2:
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-StableDiffusionV2()
+serve.create_backend("diffusion_model", StableDiffusionV2)
+serve.create_endpoint("diffusion_model", backend="diffusion_model", route="/diffusion_model")
+
 serve.run(host="0.0.0.0", port=8888)
