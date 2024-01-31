@@ -1,6 +1,7 @@
 # __example_code_start__
 
 from io import BytesIO
+from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import Response
 from ray import serve
