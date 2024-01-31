@@ -20,6 +20,8 @@ class PromptRequest(BaseModel):
     prompt: str
 
 
+# Update the APIIngress class as follows:
+
 @serve.deployment(num_replicas=1)
 @serve.ingress(app)
 class APIIngress:
@@ -35,14 +37,25 @@ class APIIngress:
         prompt = prompt_request.prompt
         assert len(prompt), "prompt parameter cannot be empty"
 
-        # Move the Ray Serve related logic inside the generate method
-        image = await self.handle.generate.remote(prompt, img_size=img_size)
+        # Create a replica context for Ray Serve
+        ctx = serve.get_replica_context()
 
-        # Convert the image to PNG format and create a response
-        file_stream = BytesIO()
-        image.save(file_stream, "PNG")
+        # Ensure we are inside a Ray Serve deployment context
+        if ctx is not None:
+            # Move the Ray Serve related logic inside the generate method
+            image = await self.handle.generate.remote(prompt, img_size=img_size)
 
-        return Response(content=file_stream.getvalue(), media_type="image/png")
+            # Convert the image to PNG format and create a response
+            file_stream = BytesIO()
+            image.save(file_stream, "PNG")
+
+            return Response(content=file_stream.getvalue(), media_type="image/png")
+        else:
+            # If not inside a Ray Serve deployment context, raise an error
+            raise HTTPException(
+                status_code=500,
+                detail="This endpoint must be called within a Ray Serve deployment.",
+            )
 
 
 @serve.deployment(
