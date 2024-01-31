@@ -7,6 +7,7 @@ from ray import serve
 
 app = FastAPI()
 
+@serve.deployment
 class StableDiffusionV2:
     def __init__(self):
         from diffusers import EulerDiscreteScheduler, StableDiffusionPipeline
@@ -34,8 +35,8 @@ class StableDiffusionV2:
 serve.start()
 
 # Define the backend and endpoint.
-serve.create_backend("diffusion_model", StableDiffusionV2)
-serve.create_endpoint("diffusion_model", backend="diffusion_model", route="/diffusion_model", methods=["GET", "POST"])
+StableDiffusionV2.deploy()
+serve.create_endpoint("diffusion_model", backend="StableDiffusionV2", route="/diffusion_model", methods=["GET", "POST"])
 
 # Use `block=False` to allow the script to run continuously.
 serve.run(host="0.0.0.0", port=8888, block=False)
