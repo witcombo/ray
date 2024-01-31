@@ -1,14 +1,41 @@
-# Complete modified code
+# __example_code_start__
 
 from io import BytesIO
 from fastapi import FastAPI
-from ray import serve
+from fastapi.responses import Response
 import torch
+
+from ray import serve
+from ray.serve.handle import DeploymentHandle
+
 
 app = FastAPI()
 
 
 @serve.deployment(num_replicas=1)
+@serve.ingress(app)
+class APIIngress:
+    def __init__(self, diffusion_model_handle: DeploymentHandle) -> None:
+        self.handle = diffusion_model_handle
+
+    @app.get(
+        "/imagine",
+        responses={200: {"content": {"image/png": {}}}},
+        response_class=Response,
+    )
+    async def generate(self, prompt: str, img_size: int = 512):
+        assert len(prompt), "prompt parameter cannot be empty"
+
+        image = await self.handle.generate.remote(prompt, img_size=img_size)
+        file_stream = BytesIO()
+        image.save(file_stream, "PNG")
+        return Response(content=file_stream.getvalue(), media_type="image/png")
+
+
+@serve.deployment(
+    ray_actor_options={"num_gpus": 1},
+    autoscaling_config={"min_replicas": 0, "max_replicas": 2},
+)
 class StableDiffusionV2:
     def __init__(self):
         from diffusers import EulerDiscreteScheduler, StableDiffusionPipeline
@@ -23,24 +50,18 @@ class StableDiffusionV2:
         )
         self.pipe = self.pipe.to("cuda")
 
-    async def generate(self, prompt: str, img_size: int = 512):
+    def generate(self, prompt: str, img_size: int = 512):
         assert len(prompt), "prompt parameter cannot be empty"
 
         with torch.autocast("cuda"):
             image = self.pipe(prompt, height=img_size, width=img_size).images[0]
-            file_stream = BytesIO()
-            image.save(file_stream, "PNG")
-            return file_stream.getvalue()
+            return image
 
 
-# Use @serve.ingress for FastAPI app
-@serve.ingress(app)
-class APIIngress:
-    async def generate(self, prompt: str, img_size: int = 512):
-        return await StableDiffusionV2.generate.remote(prompt, img_size=img_size)
+entrypoint = APIIngress.bind(StableDiffusionV2.bind())
 
+# __example_code_end__
 
-entrypoint = APIIngress.deploy(StableDiffusionV2)
 
 if __name__ == "__main__":
     import ray
@@ -58,8 +79,7 @@ if __name__ == "__main__":
         }
     )
 
-    # Deploy entrypoint
-    handle = serve.start(entrypoint)
+    handle = serve.run(entrypoint)
 
     # Run FastAPI application using uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8888)
